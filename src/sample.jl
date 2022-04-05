@@ -240,7 +240,7 @@ function mcmcsample(
     # Start the timer
     start = time()
     local states, state, itotal
-    states, samples_per_replica = [], []
+    states, samples_per_beta = [], Dict()
     βs = [sampler.alg.β for sampler in samplers]
     @ifwithprogresslogger progress name=progressname begin
         # Determine threshold values for progress logging
@@ -274,7 +274,7 @@ function mcmcsample(
             # Save the sample.
             samples = AbstractMCMC.samples(sample, model, sampler, N; kwargs...)
             samples = save!!(samples, sample, 1, model, sampler, N; kwargs...)
-            push!(samples_per_replica, samples)
+            samples_per_beta[sampler.alg.β] = samples
             # Update the progress bar if it is the last replica
             itotal = 1 + discard_initial
             println(itotal)
@@ -319,7 +319,7 @@ function mcmcsample(
                 states[sampler_id] = state
 
                 # Save the sample for the replica
-                samples_per_replica[sampler_id] = save!!(samples_per_replica[sampler_id], sample, i, model, sampler, N; kwargs...)
+                samples_per_beta[sampler.alg.β] = save!!(samples_per_beta[sampler.alg.β], sample, i, model, sampler, N; kwargs...)
 
                 # Update the progress bar if it is the last replica
                 if progress && (itotal += 1) >= next_update && sampler_id == length(samplers)
@@ -335,12 +335,14 @@ function mcmcsample(
     duration = stop - start
     stats = SamplingStats(start, stop, duration)
 
+    # println(samples_per_beta)
+
     bundled_samples = Dict()
     for β in βs
         for (sampler_id, sampler) in enumerate(samplers)
             if sampler.alg.β == β
                 state = states[sampler_id]
-                samples = samples_per_replica[sampler_id]
+                samples = samples_per_beta[β]
                 bundled_samples[β] =  bundle_samples(
                     samples, 
                     model, 
