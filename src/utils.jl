@@ -7,13 +7,25 @@ function communication_barrier(rejection_rate, β_current)
     return Λ_fun
 end
 
-function update_βs(β_current, rejection_rate)
+function update_βs(β_current, Λ_, num_replicas)
     # rejection_rate here is the average rejection rate over n_scan iters
-    N = length(β_current)
-    β = zeros(length(β_current))
+    β = zeros(eltype(β_current),num_replicas)
     β[1] = 0.0
     β[N] = 1.0
-    Λ_ = communication_barrier(rejection_rate, β_current)
+    
+    Λ = Λ_(1)
+
+    for n in 2:(N-1)
+        f(x) = Λ_(x) - Λ / (N - 1)
+        β[n] = Roots.find_zero(f, (0.0, 1.0), Roots.Bisection())
+    end
+    return β
+end
+function update_βs(β_current, Λ_)
+    β = zeros(eltype(β_current),length(β_current))
+    β[1] = 0.0
+    β[N] = 1.0
+    
     Λ = Λ_(1)
 
     for n in 2:(N-1)
