@@ -218,31 +218,38 @@ function mcmcsample(
 
     println("Replica Exchange AbstractMCMC.mcmcsample")
 
-    function swap_β(samplers::Vector{<:AbstractSampler}, states, start::Integer)
-       
-        rejections = zeros(eltype(samplers[2].alg.β), length(samplers)) # why rejections type need to be that of β?
+    # N > 0 || error("the number of samples must be ≥ 1")
+    # Ntotal = thinning * (N - 1) + discard_initial + 1
+
+    # Start the timer
+    start = time()
+    local states, state
+    states, samples_per_beta = [], Dict()
+
+    function swap_β(samplers::Vector{<:AbstractSampler}, states, start::Integer, rejections)
+
         for sampler_id in 1:length(samplers)
             logα = -(samplers[sampler_id].alg.β - samplers[sampler_id+1].alg.β) * (states[sampler_id].z.ℓπ.value - states[sampler_id+1].z.ℓπ.value)
-            rejections[sampler_id] = 1 - min(1.0, exp(logα))
-        end 
+            rejections[sampler_id] = rejections[sampler_id] + 1 - min(1.0, exp(logα))
+        end
 
         L = length(samplers) - 1
         for sampler_id in start:2:L
             logα = (samplers[sampler_id].alg.β - samplers[sampler_id+1].alg.β) * (states[sampler_id].z.ℓπ.value - states[sampler_id+1].z.ℓπ.value)
 
-           if log(1 - Random.rand(rng)) ≤ logα
+            if log(1 - Random.rand(rng)) ≤ logα
                 @set samplers[sampler_id].alg.β, samplers[sampler_id+1].alg.β = samplers[sampler_id+1].alg.β, samplers[sampler_id].alg.β
             end
-          
+
         end
         return rejections
     end
 
-    function DEO(num_iters, samplers, is_tuning,samples_per_beta)
-       # if is_tuning
+    function DEO(num_iters, samplers, is_tuning, samples_per_beta)
+        # if is_tuning
         rejections_sum = zeros(eltype(samplers[2].alg.β), length(samplers))
-        n_swap = 0 
-       # end
+        n_swap = 0
+        # end
         for n in 1:num_iters
 
             for (sampler_id, sampler) in enumerate(samplers) # local exploration 
@@ -251,7 +258,7 @@ function mcmcsample(
 
                 # Obtain the next sample and state for the replica
                 sample, state = step(rng, model, sampler, state; kwargs...)
-       
+
                 # Run callback for the replica
                 callback === nothing || callback(rng, model, sampler, sample, state, n; kwargs...)
 
@@ -259,37 +266,38 @@ function mcmcsample(
                 states[sampler_id] = state
 
                 # Save the sample for the replica
-                samples_per_beta[sampler.alg.β] = save!!(samples_per_beta[sampler.alg.β], sample, n, model, sampler, num_iters; kwargs...)
+                if !is_tuning
+                    samples_per_beta[sampler.alg.β] = save!!(samples_per_beta[sampler.alg.β], sample, n, model, sampler, num_iters; kwargs...)
+
+                end
             end
 
             if n % swap_every == 0   ## replica exchange
                 if n % (2 * swap_every) == 0
-                    rejections = swap_β(samplers, states,2) # swap even indices
+                    rejections = swap_β(samplers, states, 2, rejections) # swap even indices
                 else
-                    rejections = swap_β(samplers, states, 1) # swap odd indices
+                    rejections = swap_β(samplers, states, 1, rejections) # swap odd indices
                 end
-                rejections_sum .+= rejections
                 n_swap += 1
-            end   
+            end
         end
         if is_tuning
-            return rejections_sum ./ n_swap, samples_per_beta
+            return rejections ./ n_swap, samples_per_beta
         else
             return samples_per_beta
         end
     end
 
-    function NRPT(N_tune, N_sample,samples_per_beta)
-
+    function NRPT(N_tune, N_sample, samples_per_beta)
         Maxround = log2(N_tune)
         is_tuning = true
-        for round = 1:Maxround 
+        for round = 1:Maxround
             for n = 1:round
-                num_iters = 2^(n-1)
+                num_iters = 2^(n - 1)
                 rejection_rate, samples_per_beta = DEO(num_iters, samplers, is_tuning, samples_per_beta)
                 β_current = [samplers[sampler_id].alg.β for sampler_id in 1:length(samplers)]
                 Λ_ = communication_barrier(rejection_rate, β_current)
-               # β_update = update_βs(β_current, Λ_, num_replicas) 
+                # β_update = update_βs(β_current, Λ_, num_replicas) 
                 β_update = update_βs(β_current, Λ_) # since we are not changing num_replicas, we don't need it for function update_βs
 
                 for sampler_id in 1:length(samplers)
@@ -297,112 +305,16 @@ function mcmcsample(
                 end
             end
         end
-        
+
         #num_replicas = 2*Λ_[1]
         #β_update = update_βs(β_current, Λ_, num_replicas)
         is_tuning = false
-        sample_per_beta = DEO(N_sample, samplers, is_tuning, samples_per_beta)
-        return sample_per_beta
+        samples_per_beta = DEO(N_sample, samplers, is_tuning, samples_per_beta)
+        return samples_per_beta
     end
 
-    # Check the number of requested samples.
-    N > 0 || error("the number of samples must be ≥ 1")
-    Ntotal = thinning * (N - 1) + discard_initial + 1
+    samples_per_beta = NRPT(N_tune, N_sample, samples_per_beta)
 
-    # Start the timer
-    start = time()
-    local states, state, itotal
-    states, samples_per_beta = [], Dict()
-    βs = [sampler.alg.β for sampler in samplers]
-    @ifwithprogresslogger progress name = progressname begin
-        # Determine threshold values for progress logging
-        # (one update per 0.5% of progress)
-        if progress
-            threshold = Ntotal ÷ 200
-            next_update = threshold
-        end
-
-        for (sampler_id, sampler) in enumerate(samplers)
-            # Obtain the initial sample and state.
-            sample, state = step(rng, model, sampler; kwargs...)
-
-            push!(states, state)
-
-            # Discard initial samples.
-            for i in 1:(discard_initial-1)
-                # Update the progress bar.
-                if progress && i >= next_update && sampler_id == length(samplers)
-                    ProgressLogging.@logprogress i / Ntotal
-                    next_update = i + threshold
-                end
-
-                # Obtain the next sample and state.
-                sample, states[sampler_id] = step(rng, model, sampler, states[sampler_id]; kwargs...)
-            end
-
-            # Run callback.
-            callback === nothing || callback(rng, model, sampler, sample, states[sampler_id], 1; kwargs...)
-
-            # Save the sample.
-            samples = AbstractMCMC.samples(sample, model, sampler, N; kwargs...)
-            samples = save!!(samples, sample, 1, model, sampler, N; kwargs...)
-            samples_per_beta[sampler.alg.β] = samples
-            # Update the progress bar if it is the last replica
-            itotal = 1 + discard_initial
-            println(itotal)
-            if progress && itotal >= next_update && sampler_id == length(samplers)
-                ProgressLogging.@logprogress itotal / Ntotal
-                next_update = itotal + threshold
-            end
-        end
-        println(itotal)
-        # Step through the sampler.
-        for i in 2:N
-            # # Discard thinned samples.
-            # for _ in 1:(thinning - 1)
-            #     # Obtain the next sample and state.
-            #     sample, state = step(rng, model, sampler, state; kwargs...)
-
-            #     # Update progress bar.
-            #     if progress && (itotal += 1) >= next_update
-            #         ProgressLogging.@logprogress itotal / Ntotal
-            #         next_update = itotal + threshold
-            #     end
-            # end
-
-            if i % swap_every == 0
-                if i % (2 * swap_every) == 0
-                    swap_β(samplers, states, 2) # swap even indices
-                else
-                    swap_β(samplers, states, 1) # swap odd indices
-                end
-            end
-            for (sampler_id, sampler) in enumerate(samplers)
-                # Load state of replica 'sampler_id'
-                state = states[sampler_id]
-
-                # Obtain the next sample and state for the replica
-                sample, state = step(rng, model, sampler, state; kwargs...)
-
-                # Run callback for the replica
-                callback === nothing || callback(rng, model, sampler, sample, state, i; kwargs...)
-
-                # Save state of replica 'sampler_id'
-                states[sampler_id] = state
-
-                # Save the sample for the replica
-                samples_per_beta[sampler.alg.β] = save!!(samples_per_beta[sampler.alg.β], sample, i, model, sampler, N; kwargs...)
-
-                # Update the progress bar if it is the last replica
-                if progress && (itotal += 1) >= next_update && sampler_id == length(samplers)
-                    ProgressLogging.@logprogress itotal / Ntotal
-                    next_update = itotal + threshold
-                end
-            end
-        end
-    end
-
-    # Get the sample stop time.
     stop = time()
     duration = stop - start
     stats = SamplingStats(start, stop, duration)
