@@ -212,6 +212,8 @@ function mcmcsample(
     chain_type::Type=Any,
     kwargs...
 )
+
+    println("blah")
     """
     Replica exchange
     """
