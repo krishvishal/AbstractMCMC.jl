@@ -202,7 +202,7 @@ function mcmcsample(
     model::AbstractModel,
     samplers::Vector{<:AbstractSampler},
     swap_every::Integer,
-    N_tune::Integer;
+    N_tune::Integer,
     N_sample::Integer;
     progress=PROGRESS[],
     progressname="Replica Exchange: Sampling ($(length(samplers)) replicas)",

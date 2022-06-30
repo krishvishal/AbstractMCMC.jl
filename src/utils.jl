@@ -7,9 +7,9 @@ function communication_barrier(rejection_rate, β_current)
     return Λ_fun
 end
 
-function update_βs(β_current, Λ_, num_replicas)
+function update_βs(β_current, Λ_)
     # rejection_rate here is the average rejection rate over n_scan iters
-    β = zeros(eltype(β_current), num_replicas)
+    β = zeros(eltype(β_current), length(β_current))
     β[1] = 1.0
     β[N] = 0.0
 
