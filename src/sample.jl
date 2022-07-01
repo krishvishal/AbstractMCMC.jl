@@ -272,12 +272,18 @@ function mcmcsample(
     end
 
     function DEO(num_iters, samplers, is_tuning, samples_per_beta)
-        # if is_tuning
+        if is_tuning
+            println("Tuning")
+        else
+            println("Sampling")
+        end
         rejections = zeros(eltype(samplers[2].alg.β), length(samplers))
         n_swap = 0
         # end
         for n in 1:num_iters
-
+            if n % 10 == 0
+                println(n)
+            end
             for (sampler_id, sampler) in enumerate(samplers) # local exploration 
                 # Load state of replica 'sampler_id'
                 state = states[sampler_id]
