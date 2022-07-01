@@ -253,13 +253,14 @@ function mcmcsample(
     end
 
     function swap_β(samplers::Vector{<:AbstractSampler}, states, start::Integer, rejections)
+        L = length(samplers) - 1
 
-        for sampler_id in 1:length(samplers)
+        for sampler_id in 1:L
             logα = -(samplers[sampler_id].alg.β - samplers[sampler_id+1].alg.β) * (states[sampler_id].z.ℓπ.value - states[sampler_id+1].z.ℓπ.value)
             rejections[sampler_id] = rejections[sampler_id] + 1 - min(1.0, exp(logα))
         end
 
-        L = length(samplers) - 1
+
         for sampler_id in start:2:L
             logα = (samplers[sampler_id].alg.β - samplers[sampler_id+1].alg.β) * (states[sampler_id].z.ℓπ.value - states[sampler_id+1].z.ℓπ.value)
 
