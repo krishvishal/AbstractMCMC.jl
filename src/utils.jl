@@ -9,16 +9,16 @@ end
 
 function update_βs(β_current, Λ_)
     # rejection_rate here is the average rejection rate over n_scan iters
-    β = zeros(eltype(β_current), length(β_current))
+    β_update = zeros(eltype(β_current), length(β_current))
     N = length(β_current)
-    β[1] = 1.0
-    β[N] = 0.0
+    β_update[1] = 1.0
+    β_update[N] = 0.0
 
     Λ = Λ_(1)
 
     for n in 2:(N-1)
         f(x) = Λ_(x) - Λ * n / (N - 1)
-        β[n] = Roots.find_zero(f, (0.0, 1.0), Roots.Bisection())
+        β_update[n] = Roots.find_zero(f, (0.0, 1.0), Roots.Bisection())
     end
-    return β
+    return β_update
 end
