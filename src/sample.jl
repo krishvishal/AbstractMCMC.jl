@@ -228,6 +228,35 @@ function mcmcsample(
     local states, state
     states, samples_per_beta = [], Dict()
 
+    for (sampler_id, sampler) in enumerate(samplers)
+        # Obtain the initial sample and state.
+        sample, state = step(rng, model, sampler; kwargs...)
+
+        push!(states, state)
+
+        # Discard initial samples.
+        for i in 1:(discard_initial-1)
+            # Update the progress bar.
+            if progress && i >= next_update && sampler_id == length(samplers)
+                ProgressLogging.@logprogress i / Ntotal
+                next_update = i + threshold
+            end
+
+            # Obtain the next sample and state.
+            sample, states[sampler_id] = step(rng, model, sampler, states[sampler_id]; kwargs...)
+        end
+
+        # Run callback.
+        callback === nothing || callback(rng, model, sampler, sample, states[sampler_id], 1; kwargs...)
+
+        # Save the sample.
+        # samples = AbstractMCMC.samples(sample, model, sampler, N; kwargs...)
+        # samples = save!!(samples, sample, 1, model, sampler, N; kwargs...)
+        # samples_per_beta[sampler.alg.β] = samples
+        # Update the progress bar if it is the last replica
+        itotal = 1 + discard_initial
+    end
+
     function swap_β(samplers::Vector{<:AbstractSampler}, states, start::Integer, rejections)
 
         for sampler_id in 1:length(samplers)
