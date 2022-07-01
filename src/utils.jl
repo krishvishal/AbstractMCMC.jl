@@ -10,6 +10,7 @@ end
 function update_βs(β_current, Λ_)
     # rejection_rate here is the average rejection rate over n_scan iters
     β = zeros(eltype(β_current), length(β_current))
+    N = length(β_current)
     β[1] = 1.0
     β[N] = 0.0
 
