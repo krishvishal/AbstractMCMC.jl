@@ -328,6 +328,9 @@ function mcmcsample(
                 num_iters = 2^(n - 1)
                 rejection_rate, samples_per_beta = DEO(num_iters, samplers, is_tuning, samples_per_beta)
                 β_current = [samplers[sampler_id].alg.β for sampler_id in 1:length(samplers)]
+                println(rejection_rate)
+                println("####################")
+                println(β_current)
                 Λ_ = communication_barrier(rejection_rate, β_current)
                 # β_update = update_βs(β_current, Λ_, num_replicas) 
                 β_update = update_βs(β_current, Λ_) # since we are not changing num_replicas, we don't need it for function update_βs
