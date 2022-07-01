@@ -337,7 +337,7 @@ function mcmcsample(
                 β_update = update_βs(β_current, Λ_) # since we are not changing num_replicas, we don't need it for function update_βs
 
                 for sampler_id in 1:length(samplers)
-                    samplers[sampler_id].alg.β = β_update[sampler_id]
+                    @set samplers[sampler_id].alg.β = β_update[sampler_id]
                 end
             end
         end
