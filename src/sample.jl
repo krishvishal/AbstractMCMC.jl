@@ -277,7 +277,7 @@ function mcmcsample(
         else
             println("Sampling")
         end
-        rejections = zeros(eltype(samplers[2].alg.β), length(samplers))
+        rejections = ones(eltype(samplers[2].alg.β), length(samplers)) .* 0.1
         n_swap = 0
         # end
         for n in 1:num_iters
