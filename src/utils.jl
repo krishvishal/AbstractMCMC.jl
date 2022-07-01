@@ -17,7 +17,7 @@ function update_βs(β_current, Λ_)
     Λ = Λ_(1)
 
     for n in 2:(N-1)
-        f(x) = Λ_(x) - Λ * n / (N - 1)
+        f(x) = Λ_(x) - (N - n) * Λ / (N - 1)
         β_update[n] = Roots.find_zero(f, (0.0, 1.0), Roots.Bisection())
     end
     return β_update
