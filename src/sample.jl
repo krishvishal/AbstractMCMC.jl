@@ -273,7 +273,7 @@ function mcmcsample(
 
     function DEO(num_iters, samplers, is_tuning, samples_per_beta)
         # if is_tuning
-        rejections_sum = zeros(eltype(samplers[2].alg.β), length(samplers))
+        rejections = zeros(eltype(samplers[2].alg.β), length(samplers))
         n_swap = 0
         # end
         for n in 1:num_iters
