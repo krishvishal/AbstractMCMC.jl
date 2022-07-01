@@ -8,6 +8,8 @@ import StatsBase
 import TerminalLoggers
 import Transducers
 using Setfield
+using Roots
+using Interpolations
 
 import Distributed
 import Logging
