@@ -237,11 +237,6 @@ function mcmcsample(
         # Discard initial samples.
         for i in 1:(discard_initial-1)
             # Update the progress bar.
-            if progress && i >= next_update && sampler_id == length(samplers)
-                ProgressLogging.@logprogress i / Ntotal
-                next_update = i + threshold
-            end
-
             # Obtain the next sample and state.
             sample, states[sampler_id] = step(rng, model, sampler, states[sampler_id]; kwargs...)
         end
