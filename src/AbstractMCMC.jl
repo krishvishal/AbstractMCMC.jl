@@ -7,7 +7,7 @@ import ProgressLogging
 import StatsBase
 import TerminalLoggers
 import Transducers
-using Setfield
+using Setfield: @set!
 using Roots
 using Interpolations
 

@@ -212,8 +212,6 @@ function mcmcsample(
     chain_type::Type=Any,
     kwargs...
 )
-
-    println("blah")
     """
     Replica exchange
     """
@@ -265,7 +263,9 @@ function mcmcsample(
             logα = (samplers[sampler_id].alg.β - samplers[sampler_id+1].alg.β) * (states[sampler_id].z.ℓπ.value - states[sampler_id+1].z.ℓπ.value)
 
             if log(1 - Random.rand(rng)) ≤ logα
-                @set samplers[sampler_id].alg.β, samplers[sampler_id+1].alg.β = samplers[sampler_id+1].alg.β, samplers[sampler_id].alg.β
+                temp = sampler[sampler_id].alg.β
+                @set! samplers[sampler_id].alg.β = samplers[sampler_id+1].alg.β
+                @set! samplers[sampler_id+1].alg.β = temp
             end
 
         end
@@ -321,7 +321,7 @@ function mcmcsample(
         end
     end
 
-    function NRPT(N_tune, N_sample, samples_per_beta)
+    function NRPT(samplers, N_tune, N_sample, samples_per_beta)
         Maxround = log2(N_tune)
         is_tuning = true
         for round = 1:Maxround
@@ -329,9 +329,6 @@ function mcmcsample(
                 num_iters = 2^(n - 1)
                 rejection_rate, samples_per_beta = DEO(num_iters, samplers, is_tuning, samples_per_beta)
                 β_current = [samplers[sampler_id].alg.β for sampler_id in 1:length(samplers)]
-                println(rejection_rate)
-                println("####################")
-                println(β_current)
                 Λ_ = communication_barrier(rejection_rate, β_current)
                 # β_update = update_βs(β_current, Λ_, num_replicas) 
                 β_update = update_βs(β_current, Λ_) # since we are not changing num_replicas, we don't need it for function update_βs
@@ -349,7 +346,7 @@ function mcmcsample(
         return samples_per_beta
     end
 
-    samples_per_beta = NRPT(N_tune, N_sample, samples_per_beta)
+    samples_per_beta = NRPT(samplers, N_tune, N_sample, samples_per_beta)
 
     stop = time()
     duration = stop - start
