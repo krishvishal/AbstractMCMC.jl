@@ -340,7 +340,8 @@ function mcmcsample(
             end
         end
 
-        #num_replicas = 2*Λ_[1]
+        num_replicas = 2*Λ_(1)
+        println("####### Number of chains required: $(num_replicas)")
         #β_update = update_βs(β_current, Λ_, num_replicas)
         is_tuning = false
         samples_per_beta = DEO(N_sample, samplers, is_tuning, samples_per_beta)
