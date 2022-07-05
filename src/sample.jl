@@ -340,7 +340,9 @@ function mcmcsample(
                 end
             end
         end
-
+        for sampler_id in 1:length(samplers)
+            println(samplers[sampler_id])
+        end
         num_replicas = 2*Λ_(1)
         println("####### Number of chains required: $(num_replicas)")
         #β_update = update_βs(β_current, Λ_, num_replicas)
@@ -348,7 +350,6 @@ function mcmcsample(
         samples_per_beta = DEO(N_sample, samplers, is_tuning, samples_per_beta)
         return samples_per_beta
     end
-
     samples_per_beta = NRPT(samplers, N_tune, N_sample, samples_per_beta)
 
     stop = time()

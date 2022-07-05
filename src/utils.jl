@@ -1,5 +1,5 @@
 function communication_barrier(rejection_rate, β_current)
-    x = reverse(β_current)
+    x = β_current
     rejection_rate_cum_sum = cumsum(rejection_rate)
     y = [0.0; rejection_rate_cum_sum[1:(end-1)]]
     spline = Interpolations.interpolate(x, y, Interpolations.FritschCarlsonMonotonicInterpolation())
@@ -17,8 +17,8 @@ function update_βs(β_current, Λ_)
     Λ = Λ_(1)
 
     for n in 2:(N-1)
-        f(x) = Λ_(x) - (N - n) * Λ / (N - 1)
-        β_update[n] = Roots.find_zero(f, (0.0, 1.0), Roots.Bisection())
+        f(x) = Λ_(x) - Λ* (n / (N - 1))
+        β_update[n] = Roots.find_zero(f, (max((0.0, betas[n - 1] - 0.1)), 1.0), Roots.Bisection())
     end
     return β_update
 end
