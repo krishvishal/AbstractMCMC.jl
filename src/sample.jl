@@ -325,6 +325,7 @@ function mcmcsample(
     function NRPT(samplers, N_tune, N_sample, samples_per_beta)
         Maxround = log2(N_tune)
         is_tuning = true
+        Λ_ = nothing
         for round = 1:Maxround
             for n = 1:round
                 num_iters = 2^(n - 1)
