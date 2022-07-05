@@ -218,18 +218,12 @@ function mcmcsample(
     function swap_β(samplers::Vector{<:AbstractSampler}, states, start::Integer)
         L = length(samplers) - 1
         for sampler_id in start:2:L
-            println("Attempting swap b/w $sampler_id, $(sampler_id+1)")
-            T = typeof(states[sampler_id].z.ℓπ)
-            for (name, typ) in zip(fieldnames(T), T.types)
-                println("type of the fieldname $name is $typ")
-            end
-            println(states[sampler_id].z.ℓπ.value)
             logα = - (samplers[sampler_id].alg.β - samplers[sampler_id + 1].alg.β) * (states[sampler_id].z.ℓπ.value - states[sampler_id+1].z.ℓπ.value)
             if log(1-Random.rand(rng)) ≤ logα
                 println("Successful swap b/w $sampler_id, $(sampler_id+1)")
-                @set samplers[sampler_id].alg.β, samplers[sampler_id + 1].alg.β = samplers[sampler_id + 1].alg.β, samplers[sampler_id].alg.β
-            else
-                println("Failed swap b/w $sampler_id, $(sampler_id+1)")
+                temp = samplers[sampler_id].alg.β
+                @set! samplers[sampler_id].alg.β = samplers[sampler_id + 1].alg.βs
+                @set! samplers[sampler_id + 1].alg.β = temp 
             end
         end
     end
