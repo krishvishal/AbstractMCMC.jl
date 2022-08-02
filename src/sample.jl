@@ -220,7 +220,6 @@ function mcmcsample(
         for sampler_id in start:2:L
             logα = - (samplers[sampler_id].alg.β - samplers[sampler_id + 1].alg.β) * (states[sampler_id].z.ℓπ.value - states[sampler_id+1].z.ℓπ.value)
             if log(1-Random.rand(rng)) ≤ logα
-                println("Successful swap b/w $sampler_id, $(sampler_id+1)")
                 temp = samplers[sampler_id].alg.β
                 @set! samplers[sampler_id].alg.β = samplers[sampler_id + 1].alg.β
                 @set! samplers[sampler_id + 1].alg.β = temp 
