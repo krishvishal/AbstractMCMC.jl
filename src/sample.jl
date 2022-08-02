@@ -298,7 +298,8 @@ function mcmcsample(
                     swap_β(samplers, states, 1) # swap odd indices
                 end
             end
-            for (sampler_id, sampler) in enumerate(samplers)
+            Threads.@threads for sampler_id in 1:length(samplers)
+                sampler = samplers[sampler_id]
                 # Load state of replica 'sampler_id'
                 state = states[sampler_id]
                 
@@ -313,12 +314,6 @@ function mcmcsample(
 
                 # Save the sample for the replica
                 samples_per_beta[sampler.alg.β] = save!!(samples_per_beta[sampler.alg.β], sample, i, model, sampler, N; kwargs...)
-
-                # Update the progress bar if it is the last replica
-                if progress && (itotal += 1) >= next_update && sampler_id == length(samplers)
-                    ProgressLogging.@logprogress itotal / Ntotal
-                    next_update = itotal + threshold
-                end
             end
         end
     end
